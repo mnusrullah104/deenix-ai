@@ -7,18 +7,28 @@ import Image from "next/image";
 import { urlFor } from "@/sanity/lib/image";
 import { PortableText } from "next-sanity";
 import { Metadata } from "next";
-type props = {
-  params: { slug: string };
-  searchParams: { [key: string]: string | string[] | undefined };
-};
 
-export async function genrateMetaData({ params, searchParams }: props): Promise<Metadata> {
+type Props = {
+  params: { slug: string }; // ✅ Fix: Ensure `params` type matches Next.js expected format
+  searchParams?: Record<string, string | string[] | undefined>; // ✅ Optional: Fix `searchParams`
+};
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const query = `*[_type=="post"&&slug.current==$slug]{_id,title,description,image}[0]`;
+  
+  // ✅ Ensure the fetch function gets the correct slug
   const data = await client.fetch(query, { slug: params.slug });
+
+  if (!data) {
+    return {
+      title: "Post Not Found",
+      description: "This post does not exist",
+    };
+  }
+
   return {
     applicationName: "Deenix",
     creator: "Muhammad Nasrullah",
-    metadataBase: new URL("site.url"),
+    metadataBase: new URL("https://yourwebsite.com"), // ✅ Fix: Provide a valid URL
     title: data.title,
     description: data.description,
     openGraph: {
@@ -32,7 +42,9 @@ export async function genrateMetaData({ params, searchParams }: props): Promise<
   };
 }
 
+
 export const revalidate = 60;
+
 async function getPost(slug: string): Promise<any> {
   const query = `*[_type == "post" && slug.current == $slug]{
     _createdAt,
@@ -51,18 +63,27 @@ async function getPost(slug: string): Promise<any> {
   }[0]`;
   return await client.fetch(query, { slug });
 }
-export default async function page({ params: { slug } }: { params: { slug: string } }) {
-  const post: sanityTypes.Post = await getPost(slug);
-  console.log("Fetched Post:", post);
+export default async function Page({ params }: Props) {
+  const post = await getPost(params.slug);
+
+  if (!post) {
+    return (
+      <div className="text-center py-10">
+        <h1 className="text-2xl font-bold">Post Not Found</h1>
+        <p>The requested blog post does not exist.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center w-full bg-background">
       <div className="h-full w-full flex flex-1 max-w-[1500px] pb-24 md:px-14 pt-32 px-4 md:px-14 flex-col space-y-4">
-        {/* Blog Content */}
+        {/* Blog Title */}
         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl max-w-4xl tracking-tighter font-extrabold text-center md:text-left">
           {post.title}
         </h1>
 
+        {/* Author and Date */}
         <div className="flex flex-row items-center space-x-3 pb-2">
           <div className="flex flex-row items-center space-x-2">
             <Avatar>
@@ -76,6 +97,7 @@ export default async function page({ params: { slug } }: { params: { slug: strin
           </div>
         </div>
 
+        {/* Blog Image */}
         <div className="w-full h-96 max-h-96 relative overflow-hidden">
           <Image
             src={urlFor(post.image).url()}
@@ -84,6 +106,8 @@ export default async function page({ params: { slug } }: { params: { slug: strin
             className="h-full w-full object-cover object-center rounded-lg"
           />
         </div>
+
+        {/* Blog Content */}
         <article className="prose lg:prose-lg dark:prose-invert pt-6">
           <PortableText value={post.content} />
         </article>

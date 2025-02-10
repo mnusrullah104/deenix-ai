@@ -6,8 +6,6 @@ import { Card } from "@/components/ui/card";
 import { Calendar1Icon } from "lucide-react";
 import Link from "next/link";
 
-import { type VariantProps } from "class-variance-authority";
-import { Metadata } from "next";
 import { ShineBorder } from "@/components/ui/shine-border";
 export const revalidate = 60;
 
